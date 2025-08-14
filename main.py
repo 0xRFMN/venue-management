@@ -18,7 +18,7 @@ app = FastAPI()
 
 # Configure CORS
 # Get allowed origins from environment or use defaults
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:5175").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:5175,https://enchanting-nasturtium-56f2a7.netlify.app").split(",")
 
 # Add common Netlify patterns for production
 if os.getenv("ENVIRONMENT") == "production":
