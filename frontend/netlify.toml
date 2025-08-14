@@ -11,7 +11,7 @@
   status = 200
 
 [context.production.environment]
-  VITE_API_BASE_URL = "https://your-backend-domain.com"
+  VITE_API_BASE_URL = "https://venue-management-production.up.railway.app"
 
 [context.deploy-preview.environment]
   VITE_API_BASE_URL = "http://localhost:8000"
