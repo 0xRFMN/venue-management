@@ -1,21 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
-from database import get_db
-from user_models import User
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 import secrets
-import hashlib
 from datetime import datetime, timedelta
 
 router = APIRouter()
 
+# Hardcoded users (no database needed)
+HARDCODED_USERS = {
+    "RulesGay": {
+        "username": "RulesGay",
+        "password": "GayRules",
+        "email": "rulesgay@example.com",
+        "id": 1,
+        "is_active": True,
+        "created_at": datetime.utcnow()
+    },
+    "Raffi": {
+        "username": "Raffi",
+        "password": "CooRaffi",
+        "email": "raffi@example.com",
+        "id": 2,
+        "is_active": True,
+        "created_at": datetime.utcnow()
+    }
+}
+
 # Session storage (in production, use Redis or database)
 active_sessions = {}
-
-class UserCreate(BaseModel):
-    username: str
-    email: EmailStr
-    password: str
 
 class UserLogin(BaseModel):
     username: str
@@ -44,61 +55,22 @@ def verify_session_token(token: str) -> dict:
     """Verify and return session data"""
     return active_sessions.get(token)
 
-@router.post("/register", response_model=UserResponse)
-def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
-    """Register a new user"""
-    
-    # Check if username already exists
-    existing_user = db.query(User).filter(User.username == user_data.username).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=400,
-            detail="Username already registered"
-        )
-    
-    # Check if email already exists
-    existing_email = db.query(User).filter(User.email == user_data.email).first()
-    if existing_email:
-        raise HTTPException(
-            status_code=400,
-            detail="Email already registered"
-        )
-    
-    # Create new user
-    hashed_password = User.hash_password(user_data.password)
-    db_user = User(
-        username=user_data.username,
-        email=user_data.email,
-        hashed_password=hashed_password
-    )
-    
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    
-    return db_user
+# Registration disabled - only hardcoded users allowed
 
 @router.post("/login", response_model=LoginResponse)
-def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
-    """Login user and create session"""
+def login_user(user_data: UserLogin):
+    """Login user with hardcoded credentials"""
     
-    # Find user by username
-    user = db.query(User).filter(User.username == user_data.username).first()
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid username or password"
-        )
-    
-    # Verify password
-    if not User.verify_password(user_data.password, user.hashed_password):
+    # Check hardcoded users
+    user = HARDCODED_USERS.get(user_data.username)
+    if not user or user["password"] != user_data.password:
         raise HTTPException(
             status_code=401,
             detail="Invalid username or password"
         )
     
     # Check if user is active
-    if not user.is_active:
+    if not user["is_active"]:
         raise HTTPException(
             status_code=401,
             detail="Account is disabled"
@@ -107,14 +79,23 @@ def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
     # Create session
     session_token = create_session_token()
     active_sessions[session_token] = {
-        "user_id": user.id,
-        "username": user.username,
+        "user_id": user["id"],
+        "username": user["username"],
         "created_at": datetime.utcnow(),
         "expires_at": datetime.utcnow() + timedelta(days=7)  # 7 day session
     }
     
+    # Create user response object
+    user_response = UserResponse(
+        id=user["id"],
+        username=user["username"],
+        email=user["email"],
+        is_active=user["is_active"],
+        created_at=user["created_at"]
+    )
+    
     return LoginResponse(
-        user=user,
+        user=user_response,
         session_token=session_token,
         message="Login successful"
     )
@@ -132,7 +113,7 @@ def logout_user(session_token: str):
         )
 
 @router.get("/verify-session")
-def verify_session(session_token: str, db: Session = Depends(get_db)):
+def verify_session(session_token: str):
     """Verify if session is valid and return user info"""
     session_data = verify_session_token(session_token)
     
@@ -150,17 +131,26 @@ def verify_session(session_token: str, db: Session = Depends(get_db)):
             detail="Session expired"
         )
     
-    # Get current user data
-    user = db.query(User).filter(User.id == session_data["user_id"]).first()
-    if not user or not user.is_active:
+    # Get hardcoded user data
+    username = session_data["username"]
+    user = HARDCODED_USERS.get(username)
+    if not user or not user["is_active"]:
         del active_sessions[session_token]
         raise HTTPException(
             status_code=401,
             detail="User account not found or disabled"
         )
     
+    user_response = UserResponse(
+        id=user["id"],
+        username=user["username"],
+        email=user["email"],
+        is_active=user["is_active"],
+        created_at=user["created_at"]
+    )
+    
     return {
-        "user": user,
+        "user": user_response,
         "session_valid": True,
         "expires_at": session_data["expires_at"]
     }

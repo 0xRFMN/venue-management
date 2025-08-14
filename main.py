@@ -7,7 +7,6 @@ from typing import List, Optional
 from pydantic import BaseModel
 from database import engine, get_db, Base
 from models import Venue, Event
-from user_models import User
 from auth import get_api_key
 from auth_endpoints import router as auth_router
 from url_parser import extract_event_id_from_url, detect_base_url_pattern, parse_bulk_input

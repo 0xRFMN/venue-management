@@ -2,12 +2,9 @@ import { useState } from 'react';
 import { userApi } from '../api/api.ts';
 
 function Login({ onLogin }) {
-  const [isRegistering, setIsRegistering] = useState(false);
   const [formData, setFormData] = useState({ 
     username: '', 
-    password: '', 
-    email: '',
-    confirmPassword: ''
+    password: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,42 +15,16 @@ function Login({ onLogin }) {
     setError('');
 
     try {
-      if (isRegistering) {
-        // Registration flow
-        if (formData.password !== formData.confirmPassword) {
-          setError('Passwords do not match');
-          setIsLoading(false);
-          return;
-        }
+      const loginResponse = await userApi.login({
+        username: formData.username,
+        password: formData.password
+      });
 
-        await userApi.register({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password
-        });
-
-        // Auto-login after successful registration
-        const loginResponse = await userApi.login({
-          username: formData.username,
-          password: formData.password
-        });
-
-        localStorage.setItem('sessionToken', loginResponse.data.session_token);
-        localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
-        onLogin(true);
-      } else {
-        // Login flow
-        const loginResponse = await userApi.login({
-          username: formData.username,
-          password: formData.password
-        });
-
-        localStorage.setItem('sessionToken', loginResponse.data.session_token);
-        localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
-        onLogin(true);
-      }
+      localStorage.setItem('sessionToken', loginResponse.data.session_token);
+      localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
+      onLogin(true);
     } catch (err) {
-      setError(err.response?.data?.detail || `${isRegistering ? 'Registration' : 'Login'} failed`);
+      setError(err.response?.data?.detail || 'Login failed');
     }
     setIsLoading(false);
   };
@@ -84,7 +55,7 @@ function Login({ onLogin }) {
             Venue Management
           </h1>
           <p style={{color: '#6b7280', fontSize: '16px'}}>
-            {isRegistering ? 'Create your account' : 'Sign in to access the dashboard'}
+            Sign in to access the dashboard
           </p>
         </div>
 
@@ -116,36 +87,8 @@ function Login({ onLogin }) {
             />
           </div>
 
-          {isRegistering && (
-            <div style={{marginBottom: '20px'}}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                Email
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box'
-                }}
-                required={isRegistering}
-                autoComplete="email"
-              />
-            </div>
-          )}
 
-          <div style={{marginBottom: isRegistering ? '20px' : '24px'}}>
+          <div style={{marginBottom: '24px'}}>
             <label style={{
               display: 'block',
               fontSize: '14px',
@@ -168,38 +111,10 @@ function Login({ onLogin }) {
                 boxSizing: 'border-box'
               }}
               required
-              autoComplete={isRegistering ? "new-password" : "current-password"}
+              autoComplete="current-password"
             />
           </div>
 
-          {isRegistering && (
-            <div style={{marginBottom: '24px'}}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box'
-                }}
-                required={isRegistering}
-                autoComplete="new-password"
-              />
-            </div>
-          )}
 
           {error && (
             <div style={{
@@ -231,33 +146,10 @@ function Login({ onLogin }) {
               opacity: isLoading ? 0.7 : 1
             }}
           >
-            {isLoading ? (isRegistering ? 'Creating Account...' : 'Signing in...') : (isRegistering ? 'Create Account' : 'Sign In')}
+            {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        <div style={{
-          marginTop: '24px',
-          textAlign: 'center'
-        }}>
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegistering(!isRegistering);
-              setError('');
-              setFormData({ username: '', password: '', email: '', confirmPassword: '' });
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#3b82f6',
-              textDecoration: 'underline',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            {isRegistering ? 'Already have an account? Sign in' : "Don't have an account? Register"}
-          </button>
-        </div>
       </div>
     </div>
   );
