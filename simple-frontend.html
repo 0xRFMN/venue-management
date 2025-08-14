@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venue & Events Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-8">Venue & Events Manager</h1>
+        
+        <!-- Add Venue Form -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">Add New Venue</h2>
+            <form id="addVenueForm" class="space-y-4">
+                <input type="text" id="venueName" placeholder="Venue Name" required
+                    class="w-full p-2 border rounded">
+                <textarea id="venueDescription" placeholder="Description" required
+                    class="w-full p-2 border rounded" rows="3"></textarea>
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Add Venue
+                </button>
+            </form>
+        </div>
+
+        <!-- Venues List -->
+        <div id="venuesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="text-center text-gray-500">Loading venues...</div>
+        </div>
+
+        <!-- Events Modal -->
+        <div id="eventsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="modalTitle" class="text-2xl font-bold"></h2>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+                
+                <!-- Add Event Form -->
+                <div class="bg-gray-50 p-4 rounded mb-4">
+                    <h3 class="font-semibold mb-2">Add New Event</h3>
+                    <form id="addEventForm" class="space-y-2">
+                        <input type="hidden" id="eventVenueId">
+                        <input type="text" id="eventName" placeholder="Event Name" required
+                            class="w-full p-2 border rounded">
+                        <input type="url" id="eventUrl" placeholder="Event URL (https://...)" required
+                            class="w-full p-2 border rounded">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" id="eventDate" class="p-2 border rounded">
+                            <input type="time" id="eventTime" class="p-2 border rounded">
+                        </div>
+                        <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                            Add Event
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Events List -->
+                <div id="eventsList" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const API_KEY = 'your-secret-api-key';
+
+        // Load venues on page load
+        document.addEventListener('DOMContentLoaded', loadVenues);
+
+        // Add venue form handler
+        document.getElementById('addVenueForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('venueName').value;
+            const description = document.getElementById('venueDescription').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/venues/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ name, description })
+                });
+                
+                if (response.ok) {
+                    document.getElementById('addVenueForm').reset();
+                    loadVenues();
+                } else {
+                    const error = await response.json();
+                    alert(error.detail || 'Failed to add venue');
+                }
+            } catch (error) {
+                alert('Error adding venue: ' + error.message);
+            }
+        });
+
+        // Add event form handler
+        document.getElementById('addEventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const venueId = document.getElementById('eventVenueId').value;
+            const name = document.getElementById('eventName').value;
+            const url = document.getElementById('eventUrl').value;
+            const date = document.getElementById('eventDate').value;
+            const time = document.getElementById('eventTime').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/events/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ 
+                        name, 
+                        url, 
+                        date: date || null, 
+                        time: time || null, 
+                        venue_id: parseInt(venueId) 
+                    })
+                });
+                
+                if (response.ok) {
+                    document.getElementById('addEventForm').reset();
+                    loadEvents(venueId);
+                } else {
+                    const error = await response.json();
+                    alert(error.detail || 'Failed to add event');
+                }
+            } catch (error) {
+                alert('Error adding event: ' + error.message);
+            }
+        });
+
+        async function loadVenues() {
+            try {
+                const response = await fetch(`${API_URL}/venues/`, {
+                    headers: { 'X-API-Key': API_KEY }
+                });
+                const venues = await response.json();
+                
+                const venuesList = document.getElementById('venuesList');
+                if (venues.length === 0) {
+                    venuesList.innerHTML = '<div class="text-center text-gray-500">No venues yet. Add one above!</div>';
+                } else {
+                    venuesList.innerHTML = venues.map(venue => `
+                        <div onclick="showEvents(${venue.id}, '${venue.name.replace(/'/g, "\\'")}')" 
+                            class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg cursor-pointer transition-shadow">
+                            <h3 class="text-xl font-semibold mb-2">${venue.name}</h3>
+                            <p class="text-gray-600">${venue.description}</p>
+                            <div class="mt-4 text-blue-500">View Events →</div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                document.getElementById('venuesList').innerHTML = 
+                    '<div class="text-red-500">Failed to load venues. Make sure the backend is running.</div>';
+            }
+        }
+
+        async function showEvents(venueId, venueName) {
+            document.getElementById('modalTitle').textContent = venueName;
+            document.getElementById('eventVenueId').value = venueId;
+            document.getElementById('eventsModal').classList.remove('hidden');
+            loadEvents(venueId);
+        }
+
+        async function loadEvents(venueId) {
+            try {
+                const response = await fetch(`${API_URL}/venues/${venueId}/events/`, {
+                    headers: { 'X-API-Key': API_KEY }
+                });
+                const events = await response.json();
+                
+                const eventsList = document.getElementById('eventsList');
+                if (events.length === 0) {
+                    eventsList.innerHTML = '<div class="text-gray-500">No events yet for this venue.</div>';
+                } else {
+                    eventsList.innerHTML = events.map(event => `
+                        <div class="bg-white p-4 border rounded">
+                            <h4 class="font-semibold">${event.name}</h4>
+                            <a href="${event.url}" target="_blank" class="text-blue-500 hover:underline text-sm">
+                                ${event.url}
+                            </a>
+                            ${event.date || event.time ? `
+                                <div class="text-gray-600 text-sm mt-1">
+                                    ${event.date ? `📅 ${event.date}` : ''}
+                                    ${event.time ? `🕐 ${event.time}` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                document.getElementById('eventsList').innerHTML = 
+                    '<div class="text-red-500">Failed to load events.</div>';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('eventsModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
