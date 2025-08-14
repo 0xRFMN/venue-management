@@ -1,3 +1,5 @@
-# Backend dependencies - actual file is in /app/requirements.txt
-# Railway: Please install from app/requirements.txt
--r app/requirements.txt
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+pydantic[email]==2.4.2
+python-multipart==0.0.6
