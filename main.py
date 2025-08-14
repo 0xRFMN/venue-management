@@ -13,7 +13,7 @@ from url_parser import extract_event_id_from_url, detect_base_url_pattern, parse
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(title="Venue Management API", version="2.0.0")
 
 # Configure CORS
 # Get allowed origins from environment or use defaults
